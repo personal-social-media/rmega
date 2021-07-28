@@ -65,9 +65,10 @@ module Rmega
         return aes_cbc_mac(@node_key.aes_key, data, mac_iv)
       end
 
-      def download(path)
+      def download(path, output_name: nil)
         path = ::File.expand_path(path)
-        path = Dir.exists?(path) ? ::File.join(path, name) : path
+        output_name ||= name
+        path = Dir.exists?(path) ? ::File.join(path, output_name) : path
 
         progress = Progress.new(filesize, caption: 'Allocate', filename: self.name)
         pool = Pool.new
