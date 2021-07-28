@@ -1,16 +1,19 @@
+# frozen_string_literal: true
+
 module Rmega
   module Net
     include Loggable
     include Options
 
-    def survive(retries = options.max_retries, &block)
+    def survive(retries = options.max_retries)
       yield
     rescue ServerError
       raise
-    rescue Exception => error
+    rescue Exception => e
       retries -= 1
-      raise(error) if retries < 0
-      logger.debug("[#{error.class}] #{error.message}. #{retries} attempt(s) left.")
+      raise(e) if retries.negative?
+
+      logger.debug("[#{e.class}] #{e.message}. #{retries} attempt(s) left.")
       sleep(options.retry_interval)
       retry
     end
@@ -20,11 +23,9 @@ module Rmega
       req = ::Net::HTTP::Get.new(uri.request_uri)
       resp = net_http(uri).request(req)
 
-      if resp.code.to_i == 509 and resp.body.to_s.empty?
-        raise BandwidthLimitExceeded.new
-      end
+      raise BandwidthLimitExceeded if (resp.code.to_i == 509) && resp.body.to_s.empty?
 
-      return resp.body
+      resp.body
     end
 
     def http_post(url, data)
@@ -40,7 +41,7 @@ module Rmega
 
       response = net_http(uri).request(req)
       logger.debug("REP #{response.code} #{cut_string(response.body)}")
-      return response
+      response
     end
 
     private
@@ -54,15 +55,16 @@ module Rmega
 
       options.marshal_dump.each do |name, value|
         setter_method = name.to_s.split('http_')[1]
-        http.__send__("#{setter_method}=", value) if setter_method and value
+        http.__send__("#{setter_method}=", value) if setter_method && value
       end
 
-      return http
+      http
     end
 
     def cut_string(string, max = 50)
       return "<binary data, #{string.size} bytes>" if string.encoding == ::Encoding::ASCII_8BIT
-      string.size <= max ? string : string[0..max-1]+"..."
+
+      string.size <= max ? string : "#{string[0..max - 1]}..."
     end
   end
 end

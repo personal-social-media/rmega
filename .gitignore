@@ -25,3 +25,4 @@ tmp
 # Required to run some specs
 account.yaml
 account.yml
+.idea/
